@@ -6,11 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// go test -v homework_test.go
-
-func ToLittleEndian(number uint32) uint32 {
-	return 0 // need to implement
-}
+// go test -v .
 
 func TestСonversion(t *testing.T) {
 	tests := map[string]struct {
@@ -37,11 +33,19 @@ func TestСonversion(t *testing.T) {
 			number: 0x01020304,
 			result: 0x04030201,
 		},
+		"test case #6": {
+			number: 0x12345678,
+			result: 0x78563412,
+		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			result := ToLittleEndian(test.number)
+			assert.Equal(t, test.result, result)
+		})
+		t.Run(name, func(t *testing.T) {
+			result := toLittleEndianShifts(test.number)
 			assert.Equal(t, test.result, result)
 		})
 	}
