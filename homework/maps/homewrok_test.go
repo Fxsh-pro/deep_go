@@ -7,38 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// go test -v homework_test.go
-
-type OrderedMap struct {
-	// need to implement
-}
-
-func NewOrderedMap() OrderedMap {
-	return OrderedMap{} // need to implement
-}
-
-func (m *OrderedMap) Insert(key, value int) {
-	// need to implement
-}
-
-func (m *OrderedMap) Erase(key int) {
-	// need to implement
-}
-
-func (m *OrderedMap) Contains(key int) bool {
-	return false // need to implement
-}
-
-func (m *OrderedMap) Size() int {
-	return 0 // need to implement
-}
-
-func (m *OrderedMap) ForEach(action func(int, int)) {
-	// need to implement
-}
-
-func TestCircularQueue(t *testing.T) {
-	data := NewOrderedMap()
+func TestOrderedMap(t *testing.T) {
+	data := NewOrderedMap[int, int]()
 	assert.Zero(t, data.Size())
 
 	data.Insert(10, 10)
