@@ -2,6 +2,8 @@ package main
 
 import (
 	"reflect"
+	"runtime"
+	"sync"
 	"testing"
 	"unsafe"
 
@@ -9,29 +11,98 @@ import (
 )
 
 type COWBuffer struct {
+	*cowBufferState
+}
+
+type cowBufferState struct {
 	data []byte
 	refs *int
-	// need to implement
+	mu   *sync.Mutex
 }
 
 func NewCOWBuffer(data []byte) COWBuffer {
-	return COWBuffer{} // need to implement
+	var refs = 1
+	state := &cowBufferState{
+		data: data,
+		refs: &refs,
+		mu:   new(sync.Mutex),
+	}
+	runtime.SetFinalizer(state, finalizeCOWBuffer)
+	return COWBuffer{cowBufferState: state}
+}
+
+func finalizeCOWBuffer(state *cowBufferState) {
+	buffer := COWBuffer{cowBufferState: state}
+	buffer.Close()
 }
 
 func (b *COWBuffer) Clone() COWBuffer {
-	return COWBuffer{} // need to implement
+	if b.cowBufferState == nil {
+		return COWBuffer{}
+	}
+	defer runtime.KeepAlive(b.cowBufferState)
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.refs == nil {
+		return COWBuffer{}
+	}
+	*b.refs++
+	state := &cowBufferState{
+		data: b.data,
+		refs: b.refs,
+		mu:   b.mu,
+	}
+	runtime.SetFinalizer(state, finalizeCOWBuffer)
+	return COWBuffer{cowBufferState: state}
 }
 
 func (b *COWBuffer) Close() {
-	// need to implement
+	if b.cowBufferState == nil {
+		return
+	}
+	defer runtime.KeepAlive(b.cowBufferState)
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.refs == nil {
+		return
+	}
+	*b.refs--
+	b.data = nil
+	b.refs = nil
+	runtime.SetFinalizer(b.cowBufferState, nil)
 }
 
 func (b *COWBuffer) Update(index int, value byte) bool {
-	return false // need to implement
+	if b.cowBufferState == nil {
+		return false
+	}
+	defer runtime.KeepAlive(b.cowBufferState)
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.refs == nil || index < 0 || index >= len(b.data) {
+		return false
+	}
+	if *b.refs > 1 {
+		newData := make([]byte, len(b.data))
+		copy(newData, b.data)
+		*b.refs--
+		b.data = newData
+		refs := 1
+		b.refs = &refs
+	}
+	b.data[index] = value
+	return true
 }
 
 func (b *COWBuffer) String() string {
-	return "" // need to implement
+	if b.cowBufferState == nil {
+		return ""
+	}
+	defer runtime.KeepAlive(b.cowBufferState)
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	str := *(*string)(unsafe.Pointer(&b.data))
+	return str
 }
 
 func TestCOWBuffer(t *testing.T) {
